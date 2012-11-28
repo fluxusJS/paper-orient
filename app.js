@@ -58,54 +58,34 @@ app.listen(process.env.PORT || 3000);
 console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);
 
 
-///////////////////////////////////////////////////////////////////// SOCKET.IO SERVER
+// SOCKET.IO SERVER
 var sio = io.listen(app);
-// console.log(sio.settings);
 
-///////////////////////////////////////////////////////////////////// SOCKET.IO WEB SOCKETS
+// SOCKET.IO WEB SOCKETS
 sio.sockets.on('connection', function(client) {
-  // For each connection made add the client to the array of clients.
-  console.log('server connection EVENT FIRED');
-  //console.log('CLIENT connected'); 
-  console.log('CLIENT ID: ' + client.id + ', TRANSPORT MECHANISM: ' + sio.transports[client.id].name);
 
-///////////////////////////////////////////////////////////////////// BUILD CLIENTS LIST
+// BUILD CLIENTS LIST
   clients.push(client);
-  console.log(clients.length);
 
   send(JSON.stringify({ "clients": clients.length }));
 
-  // log each clients id
-  clients.forEach(function(client) {
-
-    console.log('CLIENT ID: ' + client.id);
-    // console.log(client);
-
-  });
-
-  client.on('disconnect', function () {
-    console.log('disconnect EVENT FIRED');
-	console.log(clients.length)
-	var index = clients.indexOf(client.id);
-	console.log(index)
-	clients.splice(index, 1);
-	console.log(clients.length)
-  });
-
-  client.on('geo', function(data) {
-	console.log('geo MESSAGE received');
+  client.on('device-orientation', function(data) {
+	console.log('device-orientation MESSAGE received');
 	console.log(data);
-	var loc = data.lat + "," + data.long
-	console.log(loc)
-	gm.reverseGeocode(loc, function(err, data){
+	console.log(data.gamma); // gamma is the left-to-right tilt in degrees, where right is positive
+	console.log(data.beta); // beta is the front-to-back tilt in degrees, where front is positive
+	console.log(data.alpha); // alpha is the compass direction the device is facing in degrees
 
-	  var city = data.results[0].address_components[2].long_name;	
-	  var state = data.results[0].address_components[4].long_name;
-	  var loc = city + ", " + state; 
-	  send(JSON.stringify({ "loc": loc }));
-	});
+	send(JSON.stringify({ 
+		"gamma": data.gamma, 
+		"beta": data.beta, 		
+		"alpha": data.alpha
+	 }));
+
   });
-});  
+
+
+}); 
 
 
 

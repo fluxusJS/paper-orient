@@ -1,30 +1,94 @@
 .container
   h2 performer action
+  div(class='main')
+    h3 Device Orientation
+
 script
  $(document).ready(function() {
+
+  Fluxus={};
+
+  Fluxus.deviceOrientation = {}
+
+  if (window.DeviceOrientationEvent) {
+    // Listen for the deviceorientation event and handle DeviceOrientationEvent object
+    window.addEventListener('deviceorientation', console.log('devOrientHandler'), false);
+
+  } else if (window.OrientationEvent) {
+    // Listen for the MozOrientation event and handle OrientationData object
+    window.addEventListener('MozOrientation', console.log('mozDevOrientHandler'), false);
+  }
+
+  if (window.DeviceMotionEvent) {
+    console.log("DeviceMotionEvent supported");
+  }
+
+  if (window.DeviceOrientationEvent) {
+
+      // Listen for the deviceorientation event and handle the raw data
+      window.addEventListener('deviceorientation', function(eventData) {
+
+      Fluxus.deviceOrientation.gamma = eventData.gamma;
+      Fluxus.deviceOrientation.beta = eventData.beta;
+      Fluxus.deviceOrientation.alpha = eventData.alpha;
+
+  }, false);
+
+  } else if (window.OrientationEvent) {
+      window.addEventListener('MozOrientation', function(eventData) {
+    }, false);
+
+  } else {
+    document.getElementById("doEvent").innerHTML = "Not supported on your device or browser."
+  }
+
+  ///// DeviceMotion
+
+  if ((window.DeviceMotionEvent) || ('listenForDeviceMovement' in window)) {
+    window.addEventListener('devicemotion', function(eventData){
+
+      var acceleration = eventData.accelerationIncludingGravity;
+      console.log(acceleration);
+
+      // Display the raw acceleration data
+      var rawAcceleration = "[" + Math.round(acceleration.x) + ", " + Math.round(acceleration.y) + ", " + Math.round(acceleration.z) + "]";
+      
+      
+      // Z is the acceleration in the Z axis, and tells us if the device is facing up, or down
+      var facingUp = -1;
+      if (acceleration.z > 0) {
+        facingUp = +1;
+      }
+
+      // Convert the value from acceleration to degress
+      //   acceleration.x|y is the acceleration according to gravity, we'll assume we're on Earth and divide 
+      //   by 9.81 (earth gravity) to get a percentage value, and then multiply that by 90 to convert to degrees.       
+      Fluxus.deviceMotion.tiltLR = Math.round(((acceleration.x) / 9.81) * -90);
+      Fluxus.deviceMotion.tiltFB = Math.round(((acceleration.y + 9.81) / 9.81) * 90 * facingUp);
+
+    }, false);
+  } else {
+    console.log("DeviceMotion is not supported on your device or browser")
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   var socket = io.connect();
+    
+    // EXAMPLE - Device Orientation emmision - (looped emmission)
+    setInterval(function(){
+      console.log('device-orientation loop');
 
-  // Im wondering if connection is deprecated? Yup, its connect.
+      socket.emit('device-orientation', {
+        gamma: Fluxus.deviceOrientation.gamma, 
+        beta: Fluxus.deviceOrientation.beta,
+        alpha: Fluxus.deviceOrientation.alpha
+      });
 
-  socket.on('connect', function (data) {
-    console.log("client connect EVENT FIRED");
-    console.log('geo')
-    function success(position) {
-      console.log(position);
-      socket.emit('geo', { long: position.coords.longitude, lat: position.coords.latitude });
-    }
-
-    function error(msg) {
-      console.log(msg);
-    }
-
-    if (navigator.geolocation) {
-      console.log('supported')
-      navigator.geolocation.getCurrentPosition(success, error);
-    } else {
-      error('not supported');
-    };
+    }, 100);
   });
+
+  // LISTEN FOR MESSAGES FROM THE SERVER
 
   socket.on('message', function (data) {
     console.dir(data);
@@ -61,7 +125,5 @@ script
       json.fn();
     }
 
-    // $('#tweets').text('tweets:' + json.clients);
-
     });
-  });
+  //});
